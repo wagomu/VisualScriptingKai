@@ -86,6 +86,10 @@ Flow Coroutines are coroutines that can be launched from **any** node, and not j
 
 Flow Coroutines follow the same rules as any other coroutine - they belong to the GameObject they are spawned on, and will be stopped when the GameObject becomes inactive.
 
+### Node Color Overrides
+
+Right-click any Flow unit, State unit, or transition and use the **Node Color/** submenu to assign one of the built-in Visual Scripting palette colors (Gray/Blue/Teal/Green/Yellow/Orange/Red, Teal Readable) plus custom blends like Purple, Pink, Amber, or Mint. The choice is stored per *node type*, so tinting「変数保存」などのノードを一度設定すれば、同じクラスのノードはグラフ全体で自動的に同色になります。Reset を選べばその型のデフォルト色に戻せます。
+
 ## Requirements
 
 * This project is developed using Unity 2021.3.30f1, but should work with version 2021.3 and above in general.
