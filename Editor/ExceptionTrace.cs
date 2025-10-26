@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace CHM.VisualScriptingKai.Editor
 {
-    public struct ExceptionTrace : IGraphElementTrace
+    public struct ExceptionTrace : IGraphElementTrace, /* [RGFix] */ IDescriptor
     {
         public readonly IGraphElement GraphElement => unit;
         public IUnit unit;
@@ -34,5 +34,15 @@ namespace CHM.VisualScriptingKai.Editor
             // Cursed operator overload. Gets texture with resolution.
             return unit.Icon()[resolution];
         }
+
+        // ----- [RGFIX] -----
+        public void Validate()
+        {
+        }
+
+        public object target { get; }
+        public IDescription description { get; }
+        public bool isDirty { get; set; }
+        // ----- [RGFIX] -----
     }
 }

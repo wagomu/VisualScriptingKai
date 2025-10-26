@@ -48,11 +48,11 @@ namespace CHM.VisualScriptingKai.Editor
         {
             if(debugEnabled.value 
             && Application.isPlaying
-            && executeQueryScheduled)
+            /* [RGFix] && executeQueryScheduled*/)
             {
                 // We only ever use this to remove entries, so an optimization here is
                 // to skip if there's nothing left.
-                if(queryResultsListView.Count > 0)
+                // [RGFix] if(queryResultsListView.Count > 0)
                     ExecuteQuery();
                 executeQueryScheduled = false;
             }
@@ -107,11 +107,11 @@ namespace CHM.VisualScriptingKai.Editor
             {
                 if(stackTrace.Contains("Unity.VisualScripting.Flow.Invoke"))
                 {
-                    // Pause the editor, then look for exception nodes.
-                    Debug.Break();
                     // Highlight the debugger.
                     GetWindow<GraphDebuggerWindow>(false).Show();
                     ExecuteQuery();
+                    // Pause the editor, then look for exception nodes.
+                    Debug.Break();
                 }
             }
         }
