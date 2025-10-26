@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditorInternal;
+using UnityEngine;
 
 namespace CHM.VisualScriptingKai.Editor
 {
@@ -46,65 +47,120 @@ namespace CHM.VisualScriptingKai.Editor
 
         internal static IEnumerable<DropdownOption> BuildContextOptions(IGraphElement element, GraphReference reference, GraphSelection selection)
         {
-            var types = CollectTargetTypes(element, selection);
-            if (types.Count == 0)
+            var targets = CollectTargets(element, selection);
+            if (!targets.HasAny)
             {
                 yield break;
             }
 
             foreach (var (choice, label) in Palette)
             {
-                yield return new DropdownOption((Action)(() => ApplyColor(types, choice)), $"Node Color/{label}");
+                yield return new DropdownOption((Action)(() => ApplyColor(targets, choice)), $"Node Color/{label}");
             }
 
-            yield return new DropdownOption((Action)(() => ApplyColor(types, null)), "Node Color/Reset");
+            yield return new DropdownOption((Action)(() => ApplyColor(targets, null)), "Node Color/Reset");
         }
 
-        private static List<Type> CollectTargetTypes(IGraphElement element, GraphSelection selection)
+        private static TargetBuckets CollectTargets(IGraphElement element, GraphSelection selection)
         {
-            var types = new List<Type>();
+            var buckets = new TargetBuckets();
+
+            void AddElement(IGraphElement candidate)
+            {
+                if (candidate == null)
+                {
+                    return;
+                }
+
+                if (TryGetMacroKey(candidate, out var macroKey))
+                {
+                    buckets.Macros.Add(macroKey);
+                }
+                else if (IsSupportedType(candidate))
+                {
+                    buckets.Types.Add(candidate.GetType());
+                }
+            }
 
             if (selection != null)
             {
                 foreach (var selected in selection)
                 {
-                    if (IsSupported(selected))
-                    {
-                        types.Add(selected.GetType());
-                    }
+                    AddElement(selected);
                 }
             }
 
-            if (types.Count == 0 && IsSupported(element))
+            if (!buckets.HasAny)
             {
-                types.Add(element.GetType());
+                AddElement(element);
             }
 
-            return types.Distinct().ToList();
+            return buckets;
         }
 
-        private static bool IsSupported(object element)
+        private static bool IsSupportedType(object element)
         {
             return element is IUnit || element is IState || element is IStateTransition;
         }
 
-        private static void ApplyColor(IEnumerable<Type> types, NodeColorChoice? choice)
+        internal static bool TryGetMacroKey(IGraphElement element, out string key)
+        {
+            key = null;
+
+            if (element is INesterUnit nesterUnit)
+            {
+                var macro = nesterUnit.nest?.macro as UnityEngine.Object;
+                if (macro == null)
+                {
+                    return false;
+                }
+
+                var path = AssetDatabase.GetAssetPath(macro);
+                if (string.IsNullOrEmpty(path))
+                {
+                    return false;
+                }
+
+                var guid = AssetDatabase.AssetPathToGUID(path);
+                key = string.IsNullOrEmpty(guid) ? path : guid;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ApplyColor(TargetBuckets targets, NodeColorChoice? choice)
         {
             var settings = NodeColorSettings.instance;
             var changed = false;
 
-            foreach (var type in types)
+            if (choice.HasValue)
             {
-                if (choice.HasValue)
+                foreach (var type in targets.Types)
                 {
-                    settings.SetColor(type, choice.Value);
-                }
-                else
-                {
-                    settings.RemoveColor(type);
+                    settings.SetTypeColor(type, choice.Value);
+                    changed = true;
                 }
 
-                changed = true;
+                foreach (var macroKey in targets.Macros)
+                {
+                    settings.SetMacroColor(macroKey, choice.Value);
+                    changed = true;
+                }
+            }
+            else
+            {
+                foreach (var type in targets.Types)
+                {
+                    settings.RemoveTypeColor(type);
+                    changed = true;
+                }
+
+                foreach (var macroKey in targets.Macros)
+                {
+                    settings.RemoveMacroColor(macroKey);
+                    changed = true;
+                }
             }
 
             if (!changed)
@@ -115,6 +171,20 @@ namespace CHM.VisualScriptingKai.Editor
             GraphWindow.active?.context?.canvas?.Recollect();
             GraphWindow.active?.Repaint();
             InternalEditorUtility.RepaintAllViews();
+        }
+
+        private class TargetBuckets
+        {
+            public TargetBuckets()
+            {
+                Types = new HashSet<Type>();
+                Macros = new HashSet<string>();
+            }
+
+            public HashSet<Type> Types { get; }
+            public HashSet<string> Macros { get; }
+
+            public bool HasAny => Types.Count > 0 || Macros.Count > 0;
         }
     }
 }

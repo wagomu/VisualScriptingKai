@@ -27,47 +27,70 @@ namespace CHM.VisualScriptingKai.Editor
     public sealed class NodeColorSettings : ScriptableSingleton<NodeColorSettings>
     {
         [Serializable]
-        private struct Entry
+        private struct TypeEntry
         {
             public string typeName;
             public NodeColorChoice color;
         }
 
-        [SerializeField]
-        private List<Entry> entries = new List<Entry>();
+        [Serializable]
+        private struct MacroEntry
+        {
+            public string macroKey;
+            public NodeColorChoice color;
+        }
 
-        private Dictionary<string, NodeColorChoice> cache;
+        [SerializeField]
+        private List<TypeEntry> typeEntries = new List<TypeEntry>();
+
+        [SerializeField]
+        private List<MacroEntry> macroEntries = new List<MacroEntry>();
+
+        private Dictionary<string, NodeColorChoice> typeCache;
+        private Dictionary<string, NodeColorChoice> macroCache;
 
         private void OnEnable()
         {
-            if (entries == null)
+            if (typeEntries == null)
             {
-                entries = new List<Entry>();
+                typeEntries = new List<TypeEntry>();
             }
 
-            RebuildCache();
+            if (macroEntries == null)
+            {
+                macroEntries = new List<MacroEntry>();
+            }
+
+            RebuildCaches();
         }
 
-        private void RebuildCache()
+        private void RebuildCaches()
         {
-            cache = new Dictionary<string, NodeColorChoice>();
+            typeCache = new Dictionary<string, NodeColorChoice>();
+            macroCache = new Dictionary<string, NodeColorChoice>();
 
-            foreach (var entry in entries)
+            foreach (var entry in typeEntries)
             {
-                if (string.IsNullOrEmpty(entry.typeName))
+                if (!string.IsNullOrEmpty(entry.typeName))
                 {
-                    continue;
+                    typeCache[entry.typeName] = entry.color;
                 }
+            }
 
-                cache[entry.typeName] = entry.color;
+            foreach (var entry in macroEntries)
+            {
+                if (!string.IsNullOrEmpty(entry.macroKey))
+                {
+                    macroCache[entry.macroKey] = entry.color;
+                }
             }
         }
 
-        private void EnsureCache()
+        private void EnsureCaches()
         {
-            if (cache == null)
+            if (typeCache == null || macroCache == null)
             {
-                RebuildCache();
+                RebuildCaches();
             }
         }
 
@@ -76,9 +99,9 @@ namespace CHM.VisualScriptingKai.Editor
             return type?.AssemblyQualifiedName;
         }
 
-        public bool TryGetColor(Type type, out NodeColorChoice choice)
+        public bool TryGetTypeColor(Type type, out NodeColorChoice choice)
         {
-            EnsureCache();
+            EnsureCaches();
             choice = default;
 
             var key = Normalize(type);
@@ -87,10 +110,23 @@ namespace CHM.VisualScriptingKai.Editor
                 return false;
             }
 
-            return cache.TryGetValue(key, out choice);
+            return typeCache.TryGetValue(key, out choice);
         }
 
-        public void SetColor(Type type, NodeColorChoice choice)
+        public bool TryGetMacroColor(string macroKey, out NodeColorChoice choice)
+        {
+            EnsureCaches();
+            choice = default;
+
+            if (string.IsNullOrEmpty(macroKey))
+            {
+                return false;
+            }
+
+            return macroCache.TryGetValue(macroKey, out choice);
+        }
+
+        public void SetTypeColor(Type type, NodeColorChoice choice)
         {
             var key = Normalize(type);
             if (string.IsNullOrEmpty(key))
@@ -98,25 +134,50 @@ namespace CHM.VisualScriptingKai.Editor
                 return;
             }
 
-            EnsureCache();
+            EnsureCaches();
 
-            cache[key] = choice;
+            typeCache[key] = choice;
 
-            var entry = new Entry { typeName = key, color = choice };
-            var index = entries.FindIndex(e => e.typeName == key);
+            var entry = new TypeEntry { typeName = key, color = choice };
+            var index = typeEntries.FindIndex(e => e.typeName == key);
             if (index >= 0)
             {
-                entries[index] = entry;
+                typeEntries[index] = entry;
             }
             else
             {
-                entries.Add(entry);
+                typeEntries.Add(entry);
             }
 
             Save(true);
         }
 
-        public void RemoveColor(Type type)
+        public void SetMacroColor(string macroKey, NodeColorChoice choice)
+        {
+            if (string.IsNullOrEmpty(macroKey))
+            {
+                return;
+            }
+
+            EnsureCaches();
+
+            macroCache[macroKey] = choice;
+
+            var entry = new MacroEntry { macroKey = macroKey, color = choice };
+            var index = macroEntries.FindIndex(e => e.macroKey == macroKey);
+            if (index >= 0)
+            {
+                macroEntries[index] = entry;
+            }
+            else
+            {
+                macroEntries.Add(entry);
+            }
+
+            Save(true);
+        }
+
+        public void RemoveTypeColor(Type type)
         {
             var key = Normalize(type);
             if (string.IsNullOrEmpty(key))
@@ -124,18 +185,44 @@ namespace CHM.VisualScriptingKai.Editor
                 return;
             }
 
-            EnsureCache();
+            EnsureCaches();
 
-            if (!cache.Remove(key))
+            if (!typeCache.Remove(key))
             {
                 return;
             }
 
-            for (var i = entries.Count - 1; i >= 0; --i)
+            for (var i = typeEntries.Count - 1; i >= 0; --i)
             {
-                if (entries[i].typeName == key)
+                if (typeEntries[i].typeName == key)
                 {
-                    entries.RemoveAt(i);
+                    typeEntries.RemoveAt(i);
+                    break;
+                }
+            }
+
+            Save(true);
+        }
+
+        public void RemoveMacroColor(string macroKey)
+        {
+            if (string.IsNullOrEmpty(macroKey))
+            {
+                return;
+            }
+
+            EnsureCaches();
+
+            if (!macroCache.Remove(macroKey))
+            {
+                return;
+            }
+
+            for (var i = macroEntries.Count - 1; i >= 0; --i)
+            {
+                if (macroEntries[i].macroKey == macroKey)
+                {
+                    macroEntries.RemoveAt(i);
                     break;
                 }
             }
@@ -145,8 +232,10 @@ namespace CHM.VisualScriptingKai.Editor
 
         public void ClearAll()
         {
-            entries.Clear();
-            cache?.Clear();
+            typeEntries.Clear();
+            macroEntries.Clear();
+            typeCache?.Clear();
+            macroCache?.Clear();
             Save(true);
         }
     }

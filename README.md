@@ -88,7 +88,7 @@ Flow Coroutines follow the same rules as any other coroutine - they belong to th
 
 ### Node Color Overrides
 
-Right-click any Flow unit, State unit, or transition and use the **Node Color/** submenu to assign one of the built-in Visual Scripting palette colors (Gray/Blue/Teal/Green/Yellow/Orange/Red, Teal Readable) plus custom blends like Purple, Pink, Amber, or Mint. The choice is stored per *node type*, so tinting「変数保存」などのノードを一度設定すれば、同じクラスのノードはグラフ全体で自動的に同色になります。Reset を選べばその型のデフォルト色に戻せます。
+Right-click any Flow unit, State unit, or transition and use the **Node Color/** submenu to assign one of the built-in Visual Scripting palette colors (Gray/Blue/Teal/Green/Yellow/Orange/Red, Teal Readable) plus custom blends like Purple, Pink, Amber, or Mint. The choice is stored per *node type* for通常ノード、そして Script Graph を参照する SubGraph ノードについては *マクロアセット（.assetファイル）ごと* に保存されます。つまり「変数保存」などのノードを一度設定すれば同クラスが一括で染まり、SubGraph はファイル単位で別々の色を割り当て可能です。Reset を選べばその型/ファイルのデフォルト色に戻せます。
 
 ## Requirements
 

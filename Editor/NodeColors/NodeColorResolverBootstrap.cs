@@ -22,15 +22,21 @@ namespace CHM.VisualScriptingKai.Editor
 
         private static NodeColorMix? ResolveNodeColor(IGraphElement element, GraphReference reference)
         {
-            var type = element?.GetType();
-            if (type == null)
+            var settings = NodeColorSettings.instance;
+
+            if (NodeColorSettingsUtility.TryGetMacroKey(element, out var macroKey) &&
+                settings.TryGetMacroColor(macroKey, out var macroChoice))
             {
-                return null;
+                return NodeColorSettingsUtility.ToMix(macroChoice);
             }
 
-            return NodeColorSettings.instance.TryGetColor(type, out var choice)
-                ? NodeColorSettingsUtility.ToMix(choice)
-                : (NodeColorMix?)null;
+            var type = element?.GetType();
+            if (settings.TryGetTypeColor(type, out var typeChoice))
+            {
+                return NodeColorSettingsUtility.ToMix(typeChoice);
+            }
+
+            return null;
         }
 
         private static IEnumerable<DropdownOption> ProvideContextOptions(IGraphElement element, GraphReference reference, GraphSelection selection)
