@@ -134,6 +134,52 @@ namespace CHM.VisualScriptingKai.Editor
                 }
             }
         }
+        public static IEnumerable<IGraphElementTrace> FindCustomEvents(IEnumerable<GraphSource> sources, string pattern, bool embedSubgraphsOnly = true)
+        {
+            HashSet<Graph> visited = new();
+            foreach(var source in sources)
+                foreach(var trace in FindCustomEvents(source, pattern, embedSubgraphsOnly, visited))
+                    yield return trace;
+        }
+        public static IEnumerable<IGraphElementTrace> FindCustomEvents(GraphSource source, string pattern, bool embedSubgraphsOnly = true, HashSet<Graph> visited = null)
+        {
+            foreach (var (unit, path) in source.GetUnitsRecursive(embedSubgraphsOnly, visited))
+            {
+                if (unit is not CustomEvent && unit is not TriggerCustomEvent)
+                    continue;
+
+                string eventName = unit.defaultValues.TryGetValue("name", out var nameValue)
+                    ? nameValue as string ?? string.Empty
+                    : string.Empty;
+
+                if (pattern.Length == 0)
+                {
+                    yield return new CustomEventTrace()
+                    {
+                        unit = unit,
+                        eventName = eventName,
+                        Reference = GraphReference.New((Object) source, path, false),
+                        Source = source,
+                        Score = 0,
+                    };
+                }
+                else
+                {
+                    long outScore = 0;
+                    if(FuzzySearch.FuzzyMatch(pattern, eventName, ref outScore))
+                    {
+                        yield return new CustomEventTrace()
+                        {
+                            unit = unit,
+                            eventName = eventName,
+                            Reference = GraphReference.New((Object) source, path, false),
+                            Source = source,
+                            Score = outScore,
+                        };
+                    }
+                }
+            }
+        }
         public static IEnumerable<IGraphElementTrace> FindStickyNotes(IEnumerable<GraphSource> sources, string pattern, bool embedSubgraphsOnly = true)
         {
             // TODO: Expose this visited set as parameter

@@ -27,6 +27,7 @@ namespace CHM.VisualScriptingKai.Editor
             public static readonly string States = "States";
             public static readonly string StateTransitions = "State Transitions";
             public static readonly string References = "References";
+            public static readonly string CustomEvents = "Custom Events";
         }
         private readonly List<string> queryOptions = new(){
             QueryType.Nodes,
@@ -34,6 +35,7 @@ namespace CHM.VisualScriptingKai.Editor
             QueryType.States,
             QueryType.StateTransitions,
             QueryType.References,
+            QueryType.CustomEvents,
         };
         private static class EditorPrefKeys
         {
@@ -199,6 +201,12 @@ namespace CHM.VisualScriptingKai.Editor
                     sources,
                     queryObject.value));
             }
+            else if (queryType.value == QueryType.CustomEvents)
+            {
+                queryResultsListView.LoadQueryResults(FindCustomEvents(
+                    sources,
+                    queryString.value));
+            }
             else throw new System.ArgumentException($"Unknown query type: {queryType.text}");
         }
         private void QueryEditedGraph()
@@ -235,6 +243,14 @@ namespace CHM.VisualScriptingKai.Editor
                     queryResultsListView.UpdateQueryResults(
                         editedGraphSource,
                         FindStateTransitions(
+                            editedGraphSource,
+                            queryString.value));
+                }
+                else if (queryType.value == QueryType.CustomEvents)
+                {
+                    queryResultsListView.UpdateQueryResults(
+                        editedGraphSource,
+                        FindCustomEvents(
                             editedGraphSource,
                             queryString.value));
                 }

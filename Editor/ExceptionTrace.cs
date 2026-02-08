@@ -20,7 +20,7 @@ namespace CHM.VisualScriptingKai.Editor
             int compare = -Reference.parentElementGuids.Count().CompareTo(other.Reference.parentElementGuids.Count());
             if(compare != 0)
                 return compare;
-            return GraphElement.Description().title.CompareTo(other.Description().title);
+            return GraphElement.Description().title.CompareTo(other.GraphElement.Description().title);
         }
         public readonly string GetInfo()
         {
