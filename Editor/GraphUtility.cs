@@ -121,15 +121,27 @@ namespace CHM.VisualScriptingKai.Editor
             {
                 // Why isn't this out??? Even though it is always overwritten internally???
                 // Note: Bigger outScore -> better
-                long outScore = 0;
-                if(FuzzySearch.FuzzyMatch(pattern, unit.Name(), ref outScore))
+                bool hasMatch = false;
+                long bestScore = 0;
+                foreach(var searchName in unit.SearchNames())
+                {
+                    long outScore = 0;
+                    if(FuzzySearch.FuzzyMatch(pattern, searchName, ref outScore)
+                    && (!hasMatch || outScore > bestScore))
+                    {
+                        hasMatch = true;
+                        bestScore = outScore;
+                    }
+                }
+
+                if(hasMatch)
                 {
                     yield return new NodeTrace()
                     {
                         unit = unit,
                         Reference = GraphReference.New((Object) source, path, false),
                         Source = source,
-                        Score = outScore,
+                        Score = bestScore,
                     };
                 }
             }
