@@ -192,6 +192,48 @@ namespace CHM.VisualScriptingKai.Editor
                 }
             }
         }
+        public static IEnumerable<IGraphElementTrace> FindLiteralStrings(IEnumerable<GraphSource> sources, string pattern, bool embedSubgraphsOnly = true)
+        {
+            HashSet<Graph> visited = new();
+            foreach(var source in sources)
+                foreach(var trace in FindLiteralStrings(source, pattern, embedSubgraphsOnly, visited))
+                    yield return trace;
+        }
+        public static IEnumerable<IGraphElementTrace> FindLiteralStrings(GraphSource source, string pattern, bool embedSubgraphsOnly = true, HashSet<Graph> visited = null)
+        {
+            foreach (var (unit, path) in source.GetUnitsRecursive(embedSubgraphsOnly, visited))
+            {
+                foreach(var literalString in GetLiteralStrings(unit))
+                {
+                    if (pattern.Length == 0)
+                    {
+                        yield return new LiteralStringTrace()
+                        {
+                            unit = unit,
+                            literalString = literalString,
+                            Reference = GraphReference.New((Object) source, path, false),
+                            Source = source,
+                            Score = 0,
+                        };
+                    }
+                    else
+                    {
+                        long outScore = 0;
+                        if(FuzzySearch.FuzzyMatch(pattern, literalString, ref outScore))
+                        {
+                            yield return new LiteralStringTrace()
+                            {
+                                unit = unit,
+                                literalString = literalString,
+                                Reference = GraphReference.New((Object) source, path, false),
+                                Source = source,
+                                Score = outScore,
+                            };
+                        }
+                    }
+                }
+            }
+        }
         public static IEnumerable<IGraphElementTrace> FindStickyNotes(IEnumerable<GraphSource> sources, string pattern, bool embedSubgraphsOnly = true)
         {
             // TODO: Expose this visited set as parameter
@@ -383,6 +425,16 @@ namespace CHM.VisualScriptingKai.Editor
         {
             return FindAllGraphAssets(searchInFolders)
             .Concat(FindAllRuntimeGraphSources());
+        }
+
+        private static IEnumerable<string> GetLiteralStrings(IUnit unit)
+        {
+            if(unit is Literal literal && literal.value is string literalValue)
+                yield return literalValue;
+
+            foreach(var defaultValue in unit.defaultValues.Values)
+                if(defaultValue is string defaultString)
+                    yield return defaultString;
         }
         
     }

@@ -40,6 +40,16 @@ namespace CHM.VisualScriptingKai.Editor.Tests
             }
         }
 
+        private sealed class StringDefaultValueUnit : Unit
+        {
+            public ValueInput input { get; private set; }
+
+            protected override void Definition()
+            {
+                input = ValueInput(nameof(input), "BetaLiteral");
+            }
+        }
+
         [Test]
         public void TestGraphQueries()
         {
@@ -108,6 +118,52 @@ namespace CHM.VisualScriptingKai.Editor.Tests
             Assert.That(CountNodeMatches(graph, nameof(GraphLensFlagEnum.SecondFlag)), Is.EqualTo(1));
         }
 
+        [Test]
+        public void FindLiteralStrings_StringLiteralValue_MatchesNode()
+        {
+            var graph = CreateGraphWithUnits(new Literal(typeof(string), "AlphaLiteral"));
+
+            Assert.That(CountLiteralStringMatches(graph, "AlphaLiteral"), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void FindLiteralStrings_StringDefaultValue_MatchesNode()
+        {
+            var graph = CreateGraphWithUnits(new StringDefaultValueUnit());
+
+            Assert.That(CountLiteralStringMatches(graph, "BetaLiteral"), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void FindLiteralStrings_EmptyPattern_ReturnsAllStringValues()
+        {
+            var graph = CreateGraphWithUnits(
+                new Literal(typeof(string), "AlphaLiteral"),
+                new StringDefaultValueUnit());
+
+            Assert.That(CountLiteralStringMatches(graph, ""), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void FindLiteralStrings_NonStringLiteralValues_DoNotMatch()
+        {
+            var graph = CreateGraphWithUnits(
+                new Literal(typeof(int), 1),
+                new Literal(typeof(bool), true));
+
+            Assert.That(CountLiteralStringMatches(graph, ""), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void FindLiteralStrings_FuzzyPattern_ReturnsMatchingStringValue()
+        {
+            var graph = CreateGraphWithUnits(
+                new Literal(typeof(string), "AlphaLiteral"),
+                new Literal(typeof(string), "GammaLiteral"));
+
+            Assert.That(CountLiteralStringMatches(graph, "Alpha"), Is.EqualTo(1));
+        }
+
         private static FlowGraph CreateGraphWithUnits(params IUnit[] units)
         {
             var graph = new FlowGraph();
@@ -123,6 +179,20 @@ namespace CHM.VisualScriptingKai.Editor.Tests
             {
                 graphAsset.graph = graph;
                 return GraphUtility.FindNodes(new GraphSource(graphAsset), pattern).Count();
+            }
+            finally
+            {
+                Object.DestroyImmediate(graphAsset);
+            }
+        }
+
+        private static int CountLiteralStringMatches(FlowGraph graph, string pattern)
+        {
+            var graphAsset = ScriptableObject.CreateInstance<ScriptGraphAsset>();
+            try
+            {
+                graphAsset.graph = graph;
+                return GraphUtility.FindLiteralStrings(new GraphSource(graphAsset), pattern).Count();
             }
             finally
             {

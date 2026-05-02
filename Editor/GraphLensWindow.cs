@@ -28,6 +28,7 @@ namespace CHM.VisualScriptingKai.Editor
             public static readonly string StateTransitions = "State Transitions";
             public static readonly string References = "References";
             public static readonly string CustomEvents = "Custom Events";
+            public static readonly string LiteralStrings = "Literal Strings";
         }
         private readonly List<string> queryOptions = new(){
             QueryType.Nodes,
@@ -36,6 +37,7 @@ namespace CHM.VisualScriptingKai.Editor
             QueryType.StateTransitions,
             QueryType.References,
             QueryType.CustomEvents,
+            QueryType.LiteralStrings,
         };
         private static class EditorPrefKeys
         {
@@ -86,20 +88,7 @@ namespace CHM.VisualScriptingKai.Editor
             queryType.RegisterValueChangedCallback(changeEvent => 
             {
                 EditorPrefs.SetInt(EditorPrefKeys.QueryType, queryType.index);
-                if (queryType.index == 4)
-                {
-                    queryFolders.parent.Insert(queryFolders.parent.IndexOf(queryString) + 1, queryRefresh);
-                    queryFolders.parent.Insert(queryFolders.parent.IndexOf(queryString) + 1, queryObject);
-                    queryFolders.parent.Remove(queryString);
-                }
-                else
-                {
-                    queryFolders.parent.Insert(queryFolders.parent.IndexOf(queryObject) + 1, queryString);
-                    if (queryObject.parent == queryFolders.parent)
-                        queryFolders.parent.Remove(queryObject);
-                    if (queryRefresh.parent == queryFolders.parent)
-                    queryFolders.parent.Remove(queryRefresh);
-                }
+                UpdateSearchFieldVisibility();
                 ExecuteQuery();
             });
 
@@ -118,12 +107,7 @@ namespace CHM.VisualScriptingKai.Editor
                 ExecuteQuery();
             });
             
-            if (queryType.index == 4)
-            {
-                queryFolders.parent.Insert(queryFolders.parent.IndexOf(queryString) + 1, queryRefresh);
-                queryFolders.parent.Insert(queryFolders.parent.IndexOf(queryString) + 1, queryObject);
-                queryFolders.parent.Remove(queryString);
-            }
+            UpdateSearchFieldVisibility();
 
             queryRefresh.tooltip = "Manual refresh is required when you change the value of an Object literal.";
             queryRefresh.clicked += () =>
@@ -207,6 +191,12 @@ namespace CHM.VisualScriptingKai.Editor
                     sources,
                     queryString.value));
             }
+            else if (queryType.value == QueryType.LiteralStrings)
+            {
+                queryResultsListView.LoadQueryResults(FindLiteralStrings(
+                    sources,
+                    queryString.value));
+            }
             else throw new System.ArgumentException($"Unknown query type: {queryType.text}");
         }
         private void QueryEditedGraph()
@@ -254,6 +244,14 @@ namespace CHM.VisualScriptingKai.Editor
                             editedGraphSource,
                             queryString.value));
                 }
+                else if (queryType.value == QueryType.LiteralStrings)
+                {
+                    queryResultsListView.UpdateQueryResults(
+                        editedGraphSource,
+                        FindLiteralStrings(
+                            editedGraphSource,
+                            queryString.value));
+                }
                 else throw new System.ArgumentException($"Unknown query type: {queryType.text}");
             }
             else
@@ -278,6 +276,33 @@ namespace CHM.VisualScriptingKai.Editor
         {
             graphAssetSourceCache.Clear();
             graphAssetSourceCache.AddRange(FindAllGraphAssets(GetQueryFolders()));
+        }
+        private void UpdateSearchFieldVisibility()
+        {
+            var queryContainer = queryFolders.parent;
+            if (queryType.value == QueryType.References)
+            {
+                if (queryObject.parent != queryContainer)
+                    queryContainer.Insert(queryContainer.IndexOf(queryString) + 1, queryObject);
+                if (queryRefresh.parent != queryContainer)
+                    queryContainer.Insert(queryContainer.IndexOf(queryObject) + 1, queryRefresh);
+                if (queryString.parent == queryContainer)
+                    queryContainer.Remove(queryString);
+            }
+            else
+            {
+                if (queryString.parent != queryContainer)
+                {
+                    int insertIndex = queryObject.parent == queryContainer
+                        ? queryContainer.IndexOf(queryObject)
+                        : queryContainer.childCount;
+                    queryContainer.Insert(insertIndex, queryString);
+                }
+                if (queryObject.parent == queryContainer)
+                    queryContainer.Remove(queryObject);
+                if (queryRefresh.parent == queryContainer)
+                    queryContainer.Remove(queryRefresh);
+            }
         }
     }
 }
